@@ -58,8 +58,8 @@ def download_pdf():
 @app.route('/download-excel', methods=['POST'])
 def download_excel():
     contenu = request.form.get('resultat_ia', '')
-    lignes = contenu.split('\n')
-    df = pd.DataFrame(lignes, columns=["Analyse PolyContent AI"])
+    df = pd.DataFrame([{"Analyse": contenu}])
+
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False)
