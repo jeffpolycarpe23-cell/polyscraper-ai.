@@ -1,1 +1,47 @@
-
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PolyScraper AI - Extraction Pro</title>
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #3b82f6; --text: #f8fafc; --green: #10b981; --red: #ef4444; }
+        body { background-color: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .container { background: var(--card); padding: 2.5rem; border-radius: 20px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); width: 100%; max-width: 480px; }
+        .header { text-align: center; margin-bottom: 25px; }
+        input[type="url"] { width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 15px; color: white; box-sizing: border-box; font-size: 14px; margin-bottom: 15px; outline: none; }
+        .btn-main { background: var(--accent); color: white; width: 100%; padding: 16px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .result-area { margin-top: 30px; background: #334155; padding: 20px; border-radius: 12px; font-size: 14px; line-height: 1.6; border-left: 4px solid var(--accent); }
+        .download-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        .btn-dl { padding: 12px; border-radius: 8px; border: none; color: white; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2 style="margin: 0;">🕵️‍♂️ PolyScraper AI</h2>
+            <p style="color: #94a3b8; font-size: 0.9rem;">Cher Client, entrez l'URL à analyser</p>
+        </div>
+        <form method="POST">
+            <input type="url" name="url_cible" placeholder="https://exemple.com/produit" required>
+            <button type="submit" class="btn-main">LANCER L'EXTRACTION ✨</button>
+        </form>
+        {% if resultat_ia %}
+        <div class="result-area">
+            <strong>Données extraites :</strong><br><br>
+            {{ resultat_ia | replace('\n', '<br>') | safe }}
+            <div class="download-grid">
+                <form action="/download-pdf" method="POST">
+                    <input type="hidden" name="resultat_ia" value="{{ resultat_ia }}">
+                    <button type="submit" class="btn-dl" style="background: var(--red); width: 100%;">📩 PDF</button>
+                </form>
+                <form action="/download-excel" method="POST">
+                    <input type="hidden" name="resultat_ia" value="{{ resultat_ia }}">
+                    <button type="submit" class="btn-dl" style="background: var(--green); width: 100%;">📊 EXCEL</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
