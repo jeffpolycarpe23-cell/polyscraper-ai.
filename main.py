@@ -1,71 +1,63 @@
 import os
-import io
-import re
-import pandas as pd
 from flask import Flask, render_template, request, send_file
-from openai import OpenAI
+import openai
+import pandas as pd
+import io
 from fpdf import FPDF
 
 app = Flask(__name__)
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
-class PDF(FPDF):
-    def header(self):
-        self.set_font('Arial', 'B', 15)
-        self.cell(0, 10, 'PolyContent AI - Rapport Pro', 0, 1, 'C')
-        self.ln(10)
+# Configuration OpenAI
+openai.api_key = os.environ.get('OPENAI_API_KEY')
 
-def generer_rapport_pdf(contenu):
-    pdf = PDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-    texte_propre = re.sub(r'[^\x00-\x7F]+', ' ', contenu)
-    pdf.multi_cell(0, 10, txt=texte_propre)
-    return pdf.output(dest='S')
-
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
 def index():
-    resultat_ia = None
-    if request.method == 'POST':
-        prompt = request.form.get('user_input')
-        service = request.form.get('service_type') 
-        if prompt:
-            try:
-                if service == "immobilier":
-                    system_msg = "Expert immobilier SeLoger/Leboncoin. Génère une annonce, un script TikTok et des posts réseaux sociaux."
-                else:
-                    system_msg = "Expert freelance. Aide à la rédaction de scripts Upwork et stratégie de vente."
+    return render_template('index.html')
 
-                response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": system_msg},
-                        {"role": "user", "content": prompt}
-                    ]
-                )
-                # On utilise "Cher Client" pour la polyvalence
-                resultat_ia = f"Cher Client, l'IA a analysé vos réponses : \n\n" + response.choices[0].message.content
-            except Exception as e:
-                resultat_ia = f"Erreur : {str(e)}"
-    return render_template('index.html', resultat_ia=resultat_ia)
+@app.route('/analyser', methods=['POST'])
+def analyser():
+    # CORRECTION ICI : On utilise 'url_cible' pour correspondre à ton HTML
+    url = request.form.get('url_cible')
+    
+    if not url:
+        return render_template('index.html', erreur="Veuillez entrer une URL valide.")
 
-@app.route('/download-pdf', methods=['POST'])
-def download_pdf():
-    contenu = request.form.get('resultat_ia', '')
-    pdf_output = generer_rapport_pdf(contenu)
-    return send_file(io.BytesIO(pdf_output), mimetype='application/pdf', as_attachment=True, download_name='Rapport_PolyContent.pdf')
+    try:
+        # Appel à l'IA pour simuler l'extraction (ou scraping réel selon ton code)
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Tu es un expert en extraction de données web."},
+                {"role": "user", "content": f"Analyse cette URL et donne-moi un résumé des produits ou informations clés : {url}"}
+            ]
+        )
+        resultat = response.choices[0].message.content
+        return render_template('index.html', resultat=resultat, url=url)
+    except Exception as e:
+        return render_template('index.html', erreur=f"Erreur lors de l'analyse : {str(e)}")
 
 @app.route('/download-excel', methods=['POST'])
 def download_excel():
     contenu = request.form.get('resultat_ia', '')
-    df = pd.DataFrame([{"Analyse": contenu}])
-
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False)
-    output.seek(0)
-    return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name='Donnees_PolyContent.xlsx')
+    if not contenu:
+        return "Erreur", 400
+    
+    try:
+        # Version stable pour iPhone : une seule grande case
+        df = pd.DataFrame([{"Analyse PolyScraper AI": contenu}])
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Extraction')
+        output.seek(0)
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name='Extraction_PolyScraper.xlsx'
+        )
+    except Exception as e:
+        return f"Erreur Excel : {str(e)}", 500
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(debug=True)
