@@ -4,5 +4,7 @@ pandas
 openpyxl
 requests
 beautifulsoup4
+gunicorn
+
 
 
