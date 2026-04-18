@@ -1,9 +1,8 @@
 fastapi
 uvicorn
-pandas
-openpyxl
+jinja2
 beautifulsoup4
 requests
-gunicorn
-jinja2
-Python-multipart
+pandas
+openpyxl
+python-multipart
