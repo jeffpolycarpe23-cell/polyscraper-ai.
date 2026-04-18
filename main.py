@@ -8,7 +8,7 @@ import io
 
 app = Flask(__name__)
 
-# Initialisation du client OpenAI avec la clé cachée dans Render
+# Initialisation du client OpenAI
 client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
 
 @app.route('/')
@@ -22,25 +22,31 @@ def analyser():
         return render_template('index.html', erreur="Veuillez entrer une URL.")
 
     try:
-        # 1. SCRAPING : On va chercher le texte sur le site
+        # 1. SCRAPING : On simule un navigateur pour lire le site
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7'
         }
+        
         response_site = requests.get(url, headers=headers, timeout=15)
         soup = BeautifulSoup(response_site.content, 'html.parser')
         
-        # Nettoyage du texte
-        for s in soup(['script', 'style', 'nav', 'footer']):
+        # Nettoyage pour ne garder que le texte important
+        for s in soup(['script', 'style', 'nav', 'footer', 'header']):
             s.decompose()
+            
         texte_brut = soup.get_text(separator=' ')
         contexte = " ".join(texte_brut.split())[:4000]
 
-        # 2. IA : Analyse et formatage Premium
+        # 2. IA : Analyse avec formatage Markdown pour le nouveau design
         response_ia = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "Tu es un extracteur pro. Réponds en Markdown : ### pour le TITRE, ** ** pour le PRIX en gras, et une liste pour les CARACTÉRISTIQUES."},
-                {"role": "user", "content": f"Extrais les infos de ce texte : {contexte}"}
+                {
+                    "role": "system", 
+                    "content": "Tu es un expert en extraction de données. Réponds TOUJOURS en Markdown. Format : ### Nom du Produit, ensuite **Prix : [Valeur]**, puis une liste à puces pour les caractéristiques."
+                },
+                {"role": "user", "content": f"Extrais les informations de ce texte : {contexte}"}
             ]
         )
         
@@ -48,12 +54,12 @@ def analyser():
         return render_template('index.html', resultat=resultat, url=url)
 
     except Exception as e:
-        return render_template('index.html', erreur=f"Erreur : {str(e)}")
+        return render_template('index.html', erreur=f"Erreur d'analyse : {str(e)}")
 
 @app.route('/download-excel', methods=['POST'])
 def download_excel():
     contenu = request.form.get('resultat_ia', '')
-    df = pd.DataFrame([{"Données Extraites": contenu}])
+    df = pd.DataFrame([{"Rapport PolyScraper": contenu}])
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False)
@@ -63,7 +69,7 @@ def download_excel():
 @app.route('/download-csv', methods=['POST'])
 def download_csv():
     contenu = request.form.get('resultat_ia', '')
-    df = pd.DataFrame([{"Données Extraites": contenu}])
+    df = pd.DataFrame([{"Rapport PolyScraper": contenu}])
     output = io.BytesIO()
     csv_data = df.to_csv(index=False, encoding='utf-8')
     return send_file(io.BytesIO(csv_data.encode()), mimetype='text/csv', as_attachment=True, download_name='Analyse_PolyScraper.csv')
