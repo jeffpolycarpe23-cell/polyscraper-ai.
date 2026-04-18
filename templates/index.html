@@ -92,8 +92,8 @@
         {% endif %}
     </div>
 
-    <script>
-        // Gestion du chargement
+        <script>
+        // 1. Gestion du bouton pendant le chargement
         const form = document.getElementById('scrapingForm');
         if(form) {
             form.onsubmit = function() {
@@ -102,13 +102,17 @@
             };
         }
 
-        // Transformation Markdown immédiate
-        const resultDiv = document.getElementById('markdown-result');
-        if (resultDiv) {
-            // On nettoie le texte et on le transforme en HTML propre
-            const rawText = resultDiv.innerHTML.trim();
-            resultDiv.innerHTML = marked.parse(rawText);
-        }
+        // 2. Transformation du texte "brut" en design "Premium"
+        window.onload = function() {
+            const resultDiv = document.getElementById('markdown-result');
+            if (resultDiv) {
+                // On récupère le texte avec les ### et **
+                const rawText = resultDiv.innerText || resultDiv.textContent;
+                // On le transforme en beau HTML
+                resultDiv.innerHTML = marked.parse(rawText.trim());
+            }
+        };
     </script>
+
 </body>
 </html>
