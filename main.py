@@ -1,72 +1,67 @@
 from fastapi import FastAPI, Request, Form
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
-from bs4 import BeautifulSoup
 import requests
+from bs4 import BeautifulSoup
+import pandas as pd
 import os
 import uvicorn
+import io
 
 app = FastAPI()
-
-# Configuration des templates
 templates = Jinja2Templates(directory="templates")
 
-def scrape_logic(url):
+# Fonction de Scraping améliorée
+def scrape_item(url):
     headers = {
         "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
-        "Accept-Language": "fr-FR,fr;q=0.9",
-        "Referer": "https://www.google.com/"
+        "Accept-Language": "fr-FR,fr;q=0.9"
     }
     try:
-        response = requests.get(url, headers=headers, timeout=10)
-        if response.status_code != 200:
-            return {"status": "Erreur", "data": f"Code {response.status_code}", "url": url}
-
-        soup = BeautifulSoup(response.text, 'html.parser')
+        res = requests.get(url.strip(), headers=headers, timeout=10)
+        if res.status_code != 200:
+            return {"url": url, "nom": "Erreur", "prix": f"Code {res.status_code}", "status": "🔴"}
         
-        # Tentative de trouver le titre
+        soup = BeautifulSoup(res.text, 'html.parser')
+        
+        # Extraction du Titre
         title = "Produit inconnu"
-        title_tag = soup.find("span", {"id": "productTitle"}) or soup.find("h1")
-        if title_tag:
-            title = title_tag.get_text().strip()
+        t_tag = soup.find("span", {"id": "productTitle"}) or soup.find("h1")
+        if t_tag: title = t_tag.get_text().strip()[:50] + "..."
 
-        # Tentative de trouver le prix (Amazon/eBay)
-        price = "Prix non trouvé"
-        # On cherche plusieurs classes communes
-        price_selectors = [
-            {"class": "a-offscreen"}, 
-            {"class": "a-price-whole"}, 
-            {"id": "prcIsum"}, 
-            {"itemprop": "price"}
+        # Extraction du Prix (Multi-sélecteurs pour Amazon/eBay)
+        price = "Non détecté"
+        p_tags = [
+            soup.find("span", {"class": "a-offscreen"}),
+            soup.find("span", {"id": "prcIsum"}),
+            soup.find("div", {"class": "pre-price"}),
+            soup.find("span", {"class": "a-price-whole"})
         ]
-        for selector in price_selectors:
-            found = soup.find(None, selector)
-            if found:
-                price = found.get_text().strip()
+        for tag in p_tags:
+            if tag:
+                price = tag.get_text().strip()
                 break
-
-        return {"status": "Succès", "data": f"{title} - {price}", "url": url}
-    except Exception as e:
-        return {"status": "Erreur", "data": str(e), "url": url}
+                
+        return {"url": url, "nom": title, "prix": price, "status": "🟢"}
+    except:
+        return {"url": url, "nom": "Lien invalide", "prix": "-", "status": "❌"}
 
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+async def home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request, "results": None})
 
 @app.post("/extract")
-async def extract_data(request: Request):
-    # Lecture JSON envoyée par ton JavaScript
-    body = await request.json()
-    links = body.get("links", [])
+async def extract(request: Request):
+    form_data = await request.form()
+    links_raw = form_data.get("links", "")
+    links_list = [l for l in links_raw.split("\n") if l.strip()]
     
-    results = []
-    for url in links:
-        if url.strip():
-            res = scrape_logic(url.strip())
-            results.append(res)
-            
-    return results
+    final_results = []
+    for link in links_list:
+        data = scrape_item(link)
+        final_results.append(data)
+        
+    return templates.TemplateResponse("index.html", {"request": request, "results": final_results})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
