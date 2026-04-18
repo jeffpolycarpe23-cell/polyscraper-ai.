@@ -1,7 +1,8 @@
 flask
 openai
-fpdf
 pandas
 openpyxl
-gunicorn
+requests
+beautifulsoup4
+
 
