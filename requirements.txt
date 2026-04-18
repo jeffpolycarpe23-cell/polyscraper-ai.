@@ -1,8 +1,9 @@
 flask
+playwright
+playwright-stealth
 openai
 pandas
 openpyxl
-requests
 beautifulsoup4
 gunicorn
 
