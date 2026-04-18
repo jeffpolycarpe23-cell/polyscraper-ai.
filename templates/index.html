@@ -3,46 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PolyScraper AI</title>
+    <title>PolyScraper AI - Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
+        .result-content h3 { color: #60a5fa; font-size: 1.25rem; font-weight: bold; margin-bottom: 10px; }
+        .result-content strong { color: #fbbf24; font-size: 1.1rem; }
+        .result-content ul { list-style-type: disc; margin-left: 20px; color: #cbd5e1; }
         .hidden { display: none; }
     </style>
 </head>
-<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4">
+<body class="bg-slate-950 text-white min-h-screen flex items-center justify-center p-4 font-sans">
 
-    <div class="max-w-xl w-full bg-slate-800 p-8 rounded-3xl shadow-2xl border border-slate-700">
-        <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold mb-2">🕵️‍♂️ PolyScraper AI</h1>
-            <p class="text-slate-400">Analyse de données intelligente</p>
+    <div class="max-w-2xl w-full bg-slate-900 p-10 rounded-[2rem] shadow-2xl border border-slate-800">
+        <div class="text-center mb-10">
+            <span class="bg-blue-500/10 text-blue-400 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest">Version 2.0 Pro</span>
+            <h1 class="text-4xl font-black mt-4 mb-2 tracking-tight">🕵️‍♂️ PolyScraper <span class="text-blue-500">AI</span></h1>
+            <p class="text-slate-500">L'extraction de données nouvelle génération.</p>
         </div>
 
         <form id="scrapingForm" action="/analyser" method="POST" class="space-y-4">
-            <input type="url" name="url_cible" placeholder="Collez l'URL ici..." class="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 focus:border-blue-500 outline-none transition" required>
+            <div class="relative">
+                <input type="url" name="url_cible" placeholder="Entrez l'URL du produit..." 
+                       class="w-full p-5 rounded-2xl bg-slate-800 border-2 border-slate-700 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all text-lg" required>
+            </div>
             
-            <button id="btnSubmit" type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition active:scale-95">
-                LANCER L'EXTRACTION ✨
+            <button id="btnSubmit" type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-2xl shadow-xl shadow-blue-900/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+                EXTRAIRE LES DONNÉES ⚡️
             </button>
         </form>
 
-        <div id="loader" class="hidden mt-6 text-center">
-            <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-2"></div>
-            <p class="text-blue-400 animate-pulse">Recherche en cours, veuillez patienter... 🕵️‍♂️</p>
+        <div id="loader" class="hidden mt-10 text-center animate-pulse">
+            <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent mb-4"></div>
+            <p class="text-slate-400 font-medium">Analyse des algorithmes en cours...</p>
         </div>
 
         {% if resultat %}
-        <div class="mt-8 p-6 bg-slate-900 rounded-2xl border border-blue-500/30">
-            <h2 class="text-blue-400 font-bold mb-4">Résultat :</h2>
-            <div class="text-slate-300 text-sm mb-6">{{ resultat | replace('\n', '<br>') | safe }}</div>
+        <div class="mt-10 p-8 bg-slate-800/50 rounded-3xl border border-blue-500/20 backdrop-blur-sm">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Rapport d'extraction</h2>
+                <span class="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]"></span>
+            </div>
+            
+            <div id="markdown-result" class="result-content text-slate-300 leading-relaxed mb-8">
+                {{ resultat }}
+            </div>
 
             <div class="grid grid-cols-2 gap-4">
                 <form action="/download-excel" method="POST">
                     <input type="hidden" name="resultat_ia" value="{{ resultat }}">
-                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 py-3 rounded-xl text-xs font-bold transition">📥 EXCEL</button>
+                    <button type="submit" class="w-full bg-emerald-600/10 hover:bg-emerald-600 text-emerald-500 hover:text-white border border-emerald-600/30 py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2">
+                        📊 EXCEL
+                    </button>
                 </form>
                 <form action="/download-csv" method="POST">
                     <input type="hidden" name="resultat_ia" value="{{ resultat }}">
-                    <button type="submit" class="w-full bg-slate-600 hover:bg-slate-700 py-3 rounded-xl text-xs font-bold transition">📂 CSV</button>
+                    <button type="submit" class="w-full bg-slate-700/50 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-600/30 py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2">
+                        📂 CSV
+                    </button>
                 </form>
             </div>
         </div>
@@ -50,11 +68,17 @@
     </div>
 
     <script>
-        // Ce script affiche le message de chargement quand on clique
+        // Animation de chargement
         document.getElementById('scrapingForm').onsubmit = function() {
             document.getElementById('btnSubmit').classList.add('hidden');
             document.getElementById('loader').classList.remove('hidden');
         };
+
+        // Transformation du texte IA en beau HTML
+        const resultDiv = document.getElementById('markdown-result');
+        if (resultDiv) {
+            resultDiv.innerHTML = marked.parse(resultDiv.innerHTML);
+        }
     </script>
 </body>
 </html>
