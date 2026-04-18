@@ -1,87 +1,45 @@
-import os
-import io
-import json
+from fastapi import FastAPI, BackgroundTasks, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 import requests
-from flask import Flask, render_template, request, send_file
-from openai import OpenAI
-import pandas as pd
 from bs4 import BeautifulSoup
+import time
 
-app = Flask(__name__)
+app = FastAPI()
+templates = Jinja2Templates(directory="templates")
 
-client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
-SCRAPERANT_API_KEY = os.environ.get('SCRAPERANT_API_KEY')
+# Variable pour stocker les résultats temporairement
+resultats_extraction = {}
 
-def smart_scrape(url):
-    """Récupère le texte propre d'une page."""
-    # On force la localisation via ScrapingAnt si besoin (optionnel)
-    api_url = f"https://api.scrapingant.com/v2/general?url={url}&x-api-key={SCRAPERANT_API_KEY}&browser=true"
-    try:
-        response = requests.get(api_url, timeout=60)
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.content, 'html.parser')
-            for s in soup(['script', 'style', 'nav', 'footer', 'header']):
-                s.decompose()
-            return " ".join(soup.get_text().split())[:5000]
-        return None
-    except:
-        return None
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/analyser', methods=['POST'])
-def analyser():
-    # Récupération des liens (un par ligne)
-    raw_links = request.form.get('urls_cibles', '').split('\n')
-    links = [l.strip() for l in raw_links if l.strip().startswith('http')]
+def scraping_logic(job_id, links):
+    """Fonction qui fait le travail lourd en arrière-plan"""
+    temp_results = []
+    headers = {"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15"}
     
-    if not links:
-        return render_template('index.html', erreur="Aucun lien valide détecté.")
-
-    resultats_finaux = []
-
     for url in links:
-        contexte = smart_scrape(url)
-        if contexte:
-            try:
-                response_ia = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": "Extraire en JSON : Produit, Prix, Marque, Caracteristiques (objet)."},
-                        {"role": "user", "content": f"URL: {url}\nTexte: {contexte}"}
-                    ],
-                    response_format={ "type": "json_object" }
-                )
-                data = json.loads(response_ia.choices[0].message.content)
-                # On ajoute l'URL pour que le client sache d'où vient la donnée
-                data['Lien'] = url 
-                resultats_finaux.append(data)
-            except:
-                continue
+        try:
+            # On simule l'extraction
+            res = requests.get(url, headers=headers, timeout=10)
+            soup = BeautifulSoup(res.text, 'html.parser')
+            titre = soup.find('title').text if soup.find('title') else "Sans titre"
+            temp_results.append({"url": url, "titre": titre})
+        except Exception as e:
+            temp_results.append({"url": url, "error": str(e)})
+        
+    # On sauvegarde le résultat final
+    resultats_extraction[job_id] = temp_results
 
-    return render_template('index.html', 
-                           resultats=resultats_finaux, 
-                           raw_json=json.dumps(resultats_finaux))
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
-@app.route('/download-excel', methods=['POST'])
-def download_excel():
-    raw_data = request.form.get('raw_json')
-    data_list = json.loads(raw_data)
+@app.post("/extract")
+async def extract(request: Request, background_tasks: BackgroundTasks):
+    data = await request.form()
+    links = data.get("links").splitlines() # Récupère les liens du textarea
+    job_id = str(time.time()) # Identifiant unique pour cette session
     
-    rows = []
-    for item in data_list:
-        details = item.pop('Caracteristiques', {})
-        if not isinstance(details, dict): details = {"Details": str(details)}
-        rows.append({**item, **details})
-
-    df = pd.DataFrame(rows)
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False)
-    output.seek(0)
-    return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name='Extraction_Multi_PolyScraper.xlsx')
-
-if __name__ == '__main__':
-    app.run(debug=True)
+    # LANCE LE SCRAPING EN ARRIÈRE-PLAN
+    background_tasks.add_task(scraping_logic, job_id, links)
+    
+    return {"status": "en_cours", "message": "L'extraction a commencé !", "id": job_id}
