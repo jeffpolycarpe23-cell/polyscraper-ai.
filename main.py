@@ -1,20 +1,3 @@
-import os
-import requests
-from bs4 import BeautifulSoup
-from flask import Flask, render_template, request, send_file
-from openai import OpenAI
-import pandas as pd
-import io
-
-app = Flask(__name__)
-
-# Configuration OpenAI
-client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
 @app.route('/analyser', methods=['POST'])
 def analyser():
     url = request.form.get('url_cible')
@@ -22,24 +5,32 @@ def analyser():
         return render_template('index.html', erreur="Veuillez entrer une URL.")
 
     try:
-        # 1. On va chercher le contenu du site (Le Scraping)
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        response_site = requests.get(url, headers=headers, timeout=10)
+        # Headers plus complets pour "tromper" les protections
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
+        }
+        
+        response_site = requests.get(url, headers=headers, timeout=15)
         soup = BeautifulSoup(response_site.content, 'html.parser')
         
-        # On extrait le texte et on nettoie un peu
-        for script in soup(["script", "style"]):
-            script.extract()
-        texte_site = soup.get_text()
-        # On prend les 3000 premiers caractères pour ne pas dépasser les limites
-        contexte = " ".join(texte_site.split())[:3000]
+        # On essaie de cibler le corps de la page pour éviter les menus inutiles
+        main_content = soup.find('body')
+        if main_content:
+            for script_or_style in main_content(["script", "style", "nav", "footer"]):
+                script_or_style.decompose()
+            texte_site = main_content.get_text(separator=' ')
+        else:
+            texte_site = soup.get_text(separator=' ')
 
-        # 2. On envoie ce texte à l'IA avec une mission précise
+        contexte = " ".join(texte_site.split())[:4000]
+
+        # On demande à l'IA d'être très précise même si les données sont denses
         response_ia = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "Tu es un extracteur de données professionnel. Ton but est de trouver le NOM DU PRODUIT, le PRIX, et de faire une LISTE des caractéristiques importantes à partir du texte fourni."},
-                {"role": "user", "content": f"Voici le texte du site : {contexte}"}
+                {"role": "system", "content": "Tu es un assistant qui extrait les données de vente. Si tu vois un prix (ex: 25.99$), un nom de produit ou une liste de caractéristiques, affiche-les clairement. Si tu ne trouves rien, résume ce que tu vois dans le texte."},
+                {"role": "user", "content": f"Extrais le NOM, le PRIX et les CARACTÉRISTIQUES de ce texte : {contexte}"}
             ]
         )
         
@@ -47,25 +38,4 @@ def analyser():
         return render_template('index.html', resultat=resultat, url=url)
 
     except Exception as e:
-        return render_template('index.html', erreur=f"Détail de l'erreur : {str(e)}")
-
-@app.route('/download-excel', methods=['POST'])
-def download_excel():
-    contenu = request.form.get('resultat_ia', '')
-    df = pd.DataFrame([{"Analyse PolyScraper": contenu}])
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False)
-    output.seek(0)
-    return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name='Analyse_PolyScraper.xlsx')
-
-@app.route('/download-csv', methods=['POST'])
-def download_csv():
-    contenu = request.form.get('resultat_ia', '')
-    df = pd.DataFrame([{"Analyse PolyScraper": contenu}])
-    output = io.BytesIO()
-    csv_data = df.to_csv(index=False, encoding='utf-8')
-    return send_file(io.BytesIO(csv_data.encode()), mimetype='text/csv', as_attachment=True, download_name='Analyse_PolyScraper.csv')
-
-if __name__ == '__main__':
-    app.run(debug=True)
+        return render_template('index.html', erreur=f"Erreur de lecture : {str(e)}")
