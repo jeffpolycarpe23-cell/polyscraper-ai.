@@ -3,159 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PolyScraper AI v2.0</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>PolyScraper Multi Pro</title>
     <style>
-        :root {
-            --primary: #4facfe;
-            --secondary: #00f2fe;
-            --dark: #0f172a;
-            --card: #1e293b;
-            --text: #f8fafc;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--dark);
-            color: var(--text);
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 500px;
-            width: 100%;
-            background: var(--card);
-            padding: 30px;
-            border-radius: 24px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-            text-align: center;
-        }
-
-        .logo { font-size: 50px; margin-bottom: 10px; }
-        
-        h1 { margin: 10px 0; font-size: 24px; background: linear-gradient(to right, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-
-        input[type="text"] {
-            width: 100%;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 12px;
-            border: 2px solid #334155;
-            background: #0f172a;
-            color: white;
-            box-sizing: border-box;
-            font-size: 16px;
-        }
-
-        button {
-            width: 100%;
-            padding: 15px;
-            border-radius: 12px;
-            border: none;
-            background: linear-gradient(45deg, var(--primary), var(--secondary));
-            color: var(--dark);
-            font-weight: bold;
-            font-size: 16px;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-
-        button:active { transform: scale(0.98); }
-
-        .result-card {
-            margin-top: 30px;
-            padding: 20px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 16px;
-            text-align: left;
-            border: 1px solid #334155;
-        }
-
-        .product-img {
-            width: 100%;
-            max-height: 250px;
-            object-fit: contain;
-            border-radius: 12px;
-            background: white;
-            margin-bottom: 15px;
-        }
-
-        .download-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        .btn-dl {
-            background: #334155;
-            color: white;
-            padding: 10px;
-            font-size: 14px;
-        }
-
-        .error { color: #ff4b2b; margin-top: 20px; }
-
-        /* Animation de chargement */
-        .loader {
-            display: none;
-            margin: 20px auto;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid var(--primary);
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        body { font-family: sans-serif; background: #0f172a; color: white; padding: 20px; }
+        .container { max-width: 600px; margin: auto; background: #1e293b; padding: 20px; border-radius: 20px; }
+        textarea { width: 100%; height: 150px; border-radius: 10px; background: #0f172a; color: #00f2fe; padding: 10px; border: 1px solid #334155; margin: 15px 0; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; border-radius: 10px; border: none; background: linear-gradient(45deg, #4facfe, #00f2fe); font-weight: bold; cursor: pointer; }
+        .res-item { border-bottom: 1px solid #334155; padding: 10px 0; }
+        .badge { background: #4facfe; color: #0f172a; padding: 2px 8px; border-radius: 5px; font-size: 12px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="logo">🕵️‍♂️</div>
-    <h1>PolyScraper AI <small style="font-size: 12px; color: #64748b;">v2.1 Pro</small></h1>
-    <p style="color: #94a3b8; font-size: 14px;">Extraction d'images et données JSON</p>
-
-    <form action="/analyser" method="post" onsubmit="document.getElementById('loader').style.display='block'">
-        <input type="text" name="url_cible" placeholder="Collez un lien Amazon, Walmart..." required>
-        <button type="submit">EXTRAIRE LES DONNÉES ⚡</button>
+    <h2>🚀 PolyScraper Multi-Liens</h2>
+    <p style="font-size: 13px; color: #94a3b8;">Collez un lien par ligne (Amazon, eBay, Walmart...)</p>
+    
+    <form action="/analyser" method="post">
+        <textarea name="urls_cibles" placeholder="Lien 1...&#10;Lien 2...&#10;Lien 3..."></textarea>
+        <button type="submit">LANCER L'EXTRACTION GROUPÉE ⚡</button>
     </form>
 
-    <div id="loader" class="loader"></div>
+    {% if resultats %}
+        <div style="margin-top: 20px;">
+            <form action="/download-excel" method="post">
+                <input type="hidden" name="raw_json" value='{{ raw_json | safe }}'>
+                <button type="submit" style="background: #22c55e; color: white;">📥 TÉLÉCHARGER LE FICHIER EXCEL UNIQUE</button>
+            </form>
 
-    {% if erreur %}
-        <p class="error"><i class="fas fa-exclamation-triangle"></i> {{ erreur }}</p>
-    {% endif %}
-
-    {% if resultat %}
-        <div class="result-card">
-            {% if image %}
-                <img src="{{ image }}" class="product-img" alt="Produit">
-            {% endif %}
-            
-            <h3 style="margin-top: 0; color: var(--secondary);">{{ resultat.Produit }}</h3>
-            <p><strong><i class="fas fa-tag"></i> Prix :</strong> {{ resultat.Prix }}</p>
-            <p><strong><i class="fas fa-building"></i> Marque :</strong> {{ resultat.Marque }}</p>
-            <p><strong><i class="fas fa-list"></i> Détails :</strong><br>
-               <span style="font-size: 14px; color: #cbd5e1;">{{ resultat.Caracteristiques }}</span>
-            </p>
-
-            <div class="download-group">
-                <form action="/download-excel" method="post">
-                    <input type="hidden" name="raw_json" value='{{ raw_json | safe }}'>
-                    <button type="submit" class="btn-dl"><i class="fas fa-file-excel"></i> Excel</button>
-                </form>
-                <form action="/download-csv" method="post">
-                    <input type="hidden" name="raw_json" value='{{ raw_json | safe }}'>
-                    <button type="submit" class="btn-dl"><i class="fas fa-file-csv"></i> CSV</button>
-                </form>
-            </div>
+            <h3 style="margin-top: 25px;">Aperçu des {{ resultats|length }} produits :</h3>
+            {% for res in resultats %}
+                <div class="res-item">
+                    <span class="badge">{{ res.Prix }}</span> <strong>{{ res.Produit }}</strong>
+                </div>
+            {% endfor %}
         </div>
     {% endif %}
 </div>
