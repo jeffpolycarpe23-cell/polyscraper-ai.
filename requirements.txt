@@ -1,6 +1,4 @@
 flask
-playwright
-playwright-stealth
 openai
 pandas
 openpyxl
