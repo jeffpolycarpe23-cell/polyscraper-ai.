@@ -3,116 +3,162 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PolyScraper AI - Pro</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <title>PolyScraper AI v2.0</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* Correction de l'alignement et du style */
-        .result-content {
-            text-align: left !important;
-            display: block;
+        :root {
+            --primary: #4facfe;
+            --secondary: #00f2fe;
+            --dark: #0f172a;
+            --card: #1e293b;
+            --text: #f8fafc;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--dark);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
             width: 100%;
-            overflow-wrap: break-word;
+            background: var(--card);
+            padding: 30px;
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            text-align: center;
         }
-        .result-content h3 { 
-            color: #60a5fa; 
-            font-size: 1.5rem; 
-            font-weight: 800; 
-            margin-top: 15px; 
-            margin-bottom: 10px;
-            line-height: 1.2;
+
+        .logo { font-size: 50px; margin-bottom: 10px; }
+        
+        h1 { margin: 10px 0; font-size: 24px; background: linear-gradient(to right, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 12px;
+            border: 2px solid #334155;
+            background: #0f172a;
+            color: white;
+            box-sizing: border-box;
+            font-size: 16px;
         }
-        .result-content strong { 
-            color: #fbbf24; 
-            font-weight: bold; 
+
+        button {
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            color: var(--dark);
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
         }
-        .result-content ul { 
-            list-style-type: disc; 
-            margin-left: 20px; 
-            margin-top: 10px;
-            margin-bottom: 15px; 
-            color: #cbd5e1; 
+
+        button:active { transform: scale(0.98); }
+
+        .result-card {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            text-align: left;
+            border: 1px solid #334155;
         }
-        .result-content li { 
-            margin-bottom: 8px; 
-            line-height: 1.5;
+
+        .product-img {
+            width: 100%;
+            max-height: 250px;
+            object-fit: contain;
+            border-radius: 12px;
+            background: white;
+            margin-bottom: 15px;
         }
-        .hidden { display: none; }
+
+        .download-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-dl {
+            background: #334155;
+            color: white;
+            padding: 10px;
+            font-size: 14px;
+        }
+
+        .error { color: #ff4b2b; margin-top: 20px; }
+
+        /* Animation de chargement */
+        .loader {
+            display: none;
+            margin: 20px auto;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="bg-slate-950 text-white min-h-screen flex items-center justify-center p-4 font-sans">
+<body>
 
-    <div class="max-w-2xl w-full bg-slate-900 p-8 rounded-[2.5rem] shadow-2xl border border-slate-800 my-10">
-        <div class="text-center mb-10">
-            <span class="bg-blue-500/10 text-blue-400 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest">Version 2.0 Pro</span>
-            <h1 class="text-4xl font-black mt-4 mb-2 tracking-tight">🕵️‍♂️ PolyScraper <span class="text-blue-500">AI</span></h1>
-            <p class="text-slate-500">L'extraction de données nouvelle génération.</p>
-        </div>
+<div class="container">
+    <div class="logo">🕵️‍♂️</div>
+    <h1>PolyScraper AI <small style="font-size: 12px; color: #64748b;">v2.1 Pro</small></h1>
+    <p style="color: #94a3b8; font-size: 14px;">Extraction d'images et données JSON</p>
 
-        <form id="scrapingForm" action="/analyser" method="POST" class="space-y-4">
-            <input type="url" name="url_cible" placeholder="Entrez l'URL du produit..." 
-                   class="w-full p-5 rounded-2xl bg-slate-800 border-2 border-slate-700 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all text-lg" required>
+    <form action="/analyser" method="post" onsubmit="document.getElementById('loader').style.display='block'">
+        <input type="text" name="url_cible" placeholder="Collez un lien Amazon, Walmart..." required>
+        <button type="submit">EXTRAIRE LES DONNÉES ⚡</button>
+    </form>
+
+    <div id="loader" class="loader"></div>
+
+    {% if erreur %}
+        <p class="error"><i class="fas fa-exclamation-triangle"></i> {{ erreur }}</p>
+    {% endif %}
+
+    {% if resultat %}
+        <div class="result-card">
+            {% if image %}
+                <img src="{{ image }}" class="product-img" alt="Produit">
+            {% endif %}
             
-            <button id="btnSubmit" type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-2xl shadow-xl shadow-blue-900/20 transition-all active:scale-[0.98]">
-                EXTRAIRE LES DONNÉES ⚡️
-            </button>
-        </form>
+            <h3 style="margin-top: 0; color: var(--secondary);">{{ resultat.Produit }}</h3>
+            <p><strong><i class="fas fa-tag"></i> Prix :</strong> {{ resultat.Prix }}</p>
+            <p><strong><i class="fas fa-building"></i> Marque :</strong> {{ resultat.Marque }}</p>
+            <p><strong><i class="fas fa-list"></i> Détails :</strong><br>
+               <span style="font-size: 14px; color: #cbd5e1;">{{ resultat.Caracteristiques }}</span>
+            </p>
 
-        <div id="loader" class="hidden mt-10 text-center animate-pulse">
-            <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent mb-4"></div>
-            <p class="text-slate-400 font-medium">Analyse des données en cours...</p>
-        </div>
-
-        {% if resultat %}
-        <div class="mt-10 p-6 bg-slate-800/40 rounded-3xl border border-blue-500/20">
-            <div class="flex items-center justify-between mb-6 border-b border-slate-700 pb-4">
-                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Rapport d'extraction</h2>
-                <span class="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]"></span>
-            </div>
-            
-            <div id="markdown-result" class="result-content text-slate-300">
-                {{ resultat }}
-            </div>
-
-            <div class="grid grid-cols-2 gap-4 mt-8">
-                <form action="/download-excel" method="POST">
-                    <input type="hidden" name="resultat_ia" value="{{ resultat }}">
-                    <button type="submit" class="w-full bg-emerald-600/10 hover:bg-emerald-600 text-emerald-500 hover:text-white border border-emerald-600/30 py-4 rounded-2xl font-bold transition-all">
-                        📊 EXCEL
-                    </button>
+            <div class="download-group">
+                <form action="/download-excel" method="post">
+                    <input type="hidden" name="raw_json" value='{{ raw_json | safe }}'>
+                    <button type="submit" class="btn-dl"><i class="fas fa-file-excel"></i> Excel</button>
                 </form>
-                <form action="/download-csv" method="POST">
-                    <input type="hidden" name="resultat_ia" value="{{ resultat }}">
-                    <button type="submit" class="w-full bg-slate-700/50 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-600/30 py-4 rounded-2xl font-bold transition-all">
-                        📂 CSV
-                    </button>
+                <form action="/download-csv" method="post">
+                    <input type="hidden" name="raw_json" value='{{ raw_json | safe }}'>
+                    <button type="submit" class="btn-dl"><i class="fas fa-file-csv"></i> CSV</button>
                 </form>
             </div>
         </div>
-        {% endif %}
-    </div>
-
-        <script>
-        // 1. Gestion du bouton pendant le chargement
-        const form = document.getElementById('scrapingForm');
-        if(form) {
-            form.onsubmit = function() {
-                document.getElementById('btnSubmit').style.display = 'none';
-                document.getElementById('loader').classList.remove('hidden');
-            };
-        }
-
-        // 2. Transformation du texte "brut" en design "Premium"
-        window.onload = function() {
-            const resultDiv = document.getElementById('markdown-result');
-            if (resultDiv) {
-                // On récupère le texte avec les ### et **
-                const rawText = resultDiv.innerText || resultDiv.textContent;
-                // On le transforme en beau HTML
-                resultDiv.innerHTML = marked.parse(rawText.trim());
-            }
-        };
-    </script>
+    {% endif %}
+</div>
 
 </body>
 </html>
