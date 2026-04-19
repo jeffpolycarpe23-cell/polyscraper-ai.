@@ -1,9 +1,1 @@
-fastapi
-uvicorn
-gunicorn
-jinja2
-beautifulsoup4
-requests
-python-multipart
-pandas
-openpyxl
+
