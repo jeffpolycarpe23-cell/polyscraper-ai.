@@ -9,8 +9,6 @@ import pandas as pd
 import io
 
 app = FastAPI()
-
-# On stocke les derniers résultats en mémoire pour l'export
 latest_results = []
 
 HTML_TEMPLATE = """
@@ -19,7 +17,7 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PolyScraper AI v4.5</title>
+    <title>PolyScraper AI Pro v5.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .loader { border-top-color: #3b82f6; animation: spinner 1s linear infinite; }
@@ -32,13 +30,13 @@ HTML_TEMPLATE = """
         
         <div class="text-center mb-8">
             <h1 class="text-3xl font-extrabold tracking-tight italic">🕵️‍♂️ PolyScraper <span class="text-blue-500 underline">AI</span></h1>
-            <p class="text-slate-400 text-[10px] mt-2 font-bold uppercase tracking-widest text-blue-300">Extraction Haute Précision (JS Enabled)</p>
+            <p class="text-slate-400 text-[10px] mt-2 font-bold uppercase tracking-widest text-blue-300">Moteur d'Extraction Universel</p>
         </div>
 
         <form id="scrapeForm" action="/extract" method="post" class="space-y-4">
             <textarea name="links" rows="4" required 
                 class="w-full bg-[#0f172a] border-2 border-slate-700 rounded-2xl p-4 text-sm text-blue-100 outline-none focus:border-blue-500 transition-all"
-                placeholder="Collez vos liens (Walmart, Sony, Amazon...) ici..."></textarea>
+                placeholder="Collez vos liens (Walmart, Amazon, Sony...) ici..."></textarea>
             
             <button type="submit" id="btnSubmit"
                 class="w-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-black py-4 rounded-2xl shadow-lg uppercase text-sm tracking-widest active:scale-95 transition-all">
@@ -48,17 +46,16 @@ HTML_TEMPLATE = """
 
         <div id="loading" class="hidden mt-8 text-center animate-pulse">
             <div class="loader ease-linear rounded-full border-4 border-t-4 border-slate-700 h-12 w-12 mb-4 mx-auto"></div>
-            <p class="text-blue-400 text-xs font-bold uppercase tracking-widest italic">Simulation de navigation en cours...</p>
-            <p class="text-slate-500 text-[9px] mt-2 italic">Walmart/Sony détecté : chargement du moteur JS...</p>
+            <p class="text-blue-400 text-xs font-bold uppercase tracking-widest">Extraction profonde en cours...</p>
         </div>
 
         {% if results %}
         <div class="mt-8">
             <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-4">
-                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest italic">Rapport Global</span>
-                <div class="flex gap-3">
-                    <a href="/download/excel" class="text-green-400 text-[10px] font-black hover:underline tracking-tighter">EXCEL</a>
-                    <a href="/download/csv" class="text-slate-400 text-[10px] font-black hover:underline tracking-tighter">CSV</a>
+                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Rapport Global</span>
+                <div class="flex gap-3 font-black text-[10px]">
+                    <a href="/download/excel" class="text-green-400 hover:text-white">EXCEL</a>
+                    <a href="/download/csv" class="text-slate-400 hover:text-white">CSV</a>
                 </div>
             </div>
             
@@ -67,8 +64,8 @@ HTML_TEMPLATE = """
                 <div class="bg-[#1e293b] p-4 rounded-2xl border border-slate-700/50 hover:border-blue-500 transition-all">
                     <h3 class="text-blue-400 font-bold text-[11px] truncate">{{ item.nom }}</h3>
                     <div class="flex justify-between mt-2 items-center">
-                        <span class="text-xs text-white font-black px-2 py-1 bg-blue-900/40 rounded-lg">🏷️ {{ item.prix }}</span>
-                        <span class="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{{ item.site }}</span>
+                        <span class="text-xs text-white font-black px-2 py-1 bg-blue-900/60 rounded-lg">🏷️ {{ item.prix }}</span>
+                        <span class="text-[9px] text-slate-500 font-bold uppercase">{{ item.site }}</span>
                     </div>
                 </div>
                 {% endfor %}
@@ -106,47 +103,51 @@ async def extract(request: Request, links: str = Form(...)):
             domain = re.search(r'https?://(?:www\.)?([^./]+)', url)
             site_name = domain.group(1).upper() if domain else "WEB"
 
-            # CRITIQUE : browser=true permet de charger les prix dynamiques (Walmart/Sony)
+            # Utilisation de ScrapingAnt avec navigateur pour Walmart/Sony
             ant_url = f"https://api.scrapingant.com/v2/general?url={url}&x-api-key={api_token}&browser=true"
-            res = requests.get(ant_url, timeout=40)
+            res = requests.get(ant_url, timeout=45)
             soup = BeautifulSoup(res.text, 'html.parser')
             
-            title = soup.title.string.strip()[:40] if soup.title else "Page Web"
+            # Nom du produit : on prend le titre de la page ou le H1
+            title = soup.title.string.strip() if soup.title else "Produit"
+            if "|" in title: title = title.split("|")[0]
+            if "-" in title: title = title.split("-")[0]
+            title = title[:40]
 
-            # Recherche intelligente du prix par Symboles et Classes
-            price = "Non détecté"
-            # On cherche les balises qui contiennent souvent les prix
-            price_tags = soup.select('[class*="price"], [id*="price"], span, div')
+            # RECHERCHE DE PRIX ULTRA-PRÉCISE (Regex)
+            # On cherche tout ce qui ressemble à un prix : $99.99, 99€, 99.00 USD
+            price = "Vérifier site"
             
-            for p in price_tags:
-                text = p.get_text().strip()
-                if re.search(r'[0-9](?:[.,][0-9]{2})?[\s]?[€$]|USD', text):
-                    if len(text) < 12: # Évite de prendre un paragraphe entier
+            # Liste de toutes les balises contenant du texte court
+            potential_tags = soup.find_all(['span', 'div', 'p', 'b', 'strong'])
+            for tag in potential_tags:
+                text = tag.get_text().strip()
+                # Expression régulière pour détecter un prix
+                if re.search(r'(\$[ ]?[0-9]+([.,][0-9]{2})?|[0-9]+([.,][0-9]{2})?[ ]?[€$]|USD[ ]?[0-9]+)', text):
+                    if len(text) < 15: # Un vrai prix est court
                         price = text
                         break
             
             results.append({"nom": title, "prix": price, "site": site_name, "url": url})
-        except:
-            results.append({"nom": "Lien sécurisé", "prix": "-", "site": "BLOQUÉ", "url": url})
+        except Exception as e:
+            results.append({"nom": "Lien restreint", "prix": "-", "site": "BLOQUÉ", "url": url})
             
     latest_results = results
     return Template(HTML_TEMPLATE).render(request=request, results=results)
 
 @app.get("/download/{file_type}")
 async def download(file_type: str):
-    if not latest_results: return {"error": "Aucune donnée"}
+    if not latest_results: return {"error": "No data"}
     df = pd.DataFrame(latest_results)
-    
     if file_type == "excel":
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False)
         output.seek(0)
-        return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": "attachment; filename=PolyScraper_Data.xlsx"})
-    
+        return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": "attachment; filename=Scraper_Data.xlsx"})
     else:
         csv_data = df.to_csv(index=False)
-        return StreamingResponse(io.StringIO(csv_data), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=PolyScraper_Data.csv"})
+        return StreamingResponse(io.StringIO(csv_data), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=Scraper_Data.csv"})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
