@@ -10,7 +10,7 @@ import io
 
 app = FastAPI()
 
-# Stockage temporaire pour l'export
+# Mémoire pour les exports
 latest_results = []
 
 HTML_TEMPLATE = """
@@ -19,7 +19,7 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PolyScraper AI v5.0</title>
+    <title>PolyScraper AI v6.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .loader { border-top-color: #3b82f6; animation: spinner 1s linear infinite; }
@@ -31,31 +31,30 @@ HTML_TEMPLATE = """
     <div class="w-full max-w-md bg-[#171f2f] rounded-3xl shadow-2xl p-6 border border-slate-800">
         
         <div class="text-center mb-8">
-            <h1 class="text-3xl font-extrabold tracking-tight italic text-white">🕵️‍♂️ PolyScraper <span class="text-blue-500 underline">AI</span></h1>
-            <p class="text-slate-400 text-[10px] mt-2 font-bold uppercase tracking-widest text-blue-300">Système d'Extraction Universel</p>
+            <h1 class="text-3xl font-extrabold tracking-tight italic">🕵️‍♂️ PolyScraper <span class="text-blue-500 underline">AI</span></h1>
+            <p class="text-slate-400 text-[10px] mt-2 font-bold uppercase tracking-widest text-blue-300">Mode Force Brute : Walmart & Sony</p>
         </div>
 
         <form id="scrapeForm" action="/extract" method="post" class="space-y-4">
             <textarea name="links" rows="4" required 
                 class="w-full bg-[#0f172a] border-2 border-slate-700 rounded-2xl p-4 text-sm text-blue-100 outline-none focus:border-blue-500 transition-all"
-                placeholder="Collez vos liens (Walmart, Sony, Amazon...) ici..."></textarea>
+                placeholder="Collez vos liens Walmart, Amazon, Sony ici..."></textarea>
             
             <button type="submit" id="btnSubmit"
-                class="w-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-black py-4 rounded-2xl shadow-lg uppercase text-sm tracking-widest active:scale-95 transition-all">
-                ANALYSER LES DONNÉES ⚡
+                class="w-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-black py-4 rounded-2xl shadow-lg uppercase text-sm tracking-widest">
+                FORCER L'EXTRACTION ⚡
             </button>
         </form>
 
         <div id="loading" class="hidden mt-8 text-center animate-pulse">
             <div class="loader ease-linear rounded-full border-4 border-t-4 border-slate-700 h-12 w-12 mb-4 mx-auto"></div>
-            <p class="text-blue-400 text-[11px] font-bold uppercase tracking-widest">Navigation furtive en cours...</p>
-            <p class="text-slate-500 text-[9px] mt-2 italic">Contournement des protections en cours...</p>
+            <p class="text-blue-400 text-[10px] font-bold uppercase tracking-widest">Contournement des pare-feu...</p>
         </div>
 
         {% if results %}
-        <div class="mt-8">
+        <div class="mt-8 animate-fade-in">
             <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-4">
-                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest italic">Rapport Final</span>
+                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest italic">Données Extraites</span>
                 <div class="flex gap-3">
                     <a href="/download/excel" class="text-green-400 text-[10px] font-black hover:underline">EXCEL</a>
                     <a href="/download/csv" class="text-slate-400 text-[10px] font-black hover:underline">CSV</a>
@@ -64,10 +63,10 @@ HTML_TEMPLATE = """
             
             <div class="space-y-3 max-h-64 overflow-y-auto pr-2">
                 {% for item in results %}
-                <div class="bg-[#1e293b] p-4 rounded-2xl border border-slate-700/50 hover:border-blue-500 transition-all">
+                <div class="bg-[#1e293b] p-4 rounded-2xl border border-slate-700/50">
                     <h3 class="text-blue-400 font-bold text-[11px] truncate">{{ item.nom }}</h3>
                     <div class="flex justify-between mt-2 items-center">
-                        <span class="text-xs text-white font-black px-2 py-1 bg-blue-900/40 rounded-lg italic tracking-tighter">🏷️ {{ item.prix }}</span>
+                        <span class="text-xs text-white font-black px-2 py-1 bg-blue-900/40 rounded-lg">🏷️ {{ item.prix }}</span>
                         <span class="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{{ item.site }}</span>
                     </div>
                 </div>
@@ -75,8 +74,6 @@ HTML_TEMPLATE = """
             </div>
         </div>
         {% endif %}
-        
-        <p class="text-center text-[8px] text-slate-600 mt-8 font-medium">Dashboard de Contrôle v5.0 - PolyScraper Secure</p>
     </div>
 
     <script>
@@ -101,64 +98,55 @@ async def extract(request: Request, links: str = Form(...)):
     global latest_results
     list_links = [l.strip() for l in links.split("\n") if l.strip()]
     results = []
-    
-    # Ton API Token ScrapingAnt
     api_token = "93663a8a07f04313b4e9f7831d3d63d8" 
     
     for url in list_links:
         try:
-            # Detection du nom du site
             domain = re.search(r'https?://(?:www\.)?([^./]+)', url)
             site_name = domain.group(1).upper() if domain else "WEB"
 
-            # Paramètres "Force Brute" : Navigateur activé + IP Résidentielle
-            ant_url = (
-                f"https://api.scrapingant.com/v2/general?"
-                f"url={url}&x-api-key={api_token}"
-                f"&browser=true&proxy_type=residential"
-            )
+            # PARAMÈTRES DE FORCE : Browser + IP Résidentielle (indétectable)
+            ant_url = f"https://api.scrapingant.com/v2/general?url={url}&x-api-key={api_token}&browser=true&proxy_type=residential"
             
-            res = requests.get(ant_url, timeout=50)
+            res = requests.get(ant_url, timeout=55)
             soup = BeautifulSoup(res.text, 'html.parser')
             
-            # Titre
-            title = soup.title.string.strip()[:40] if soup.title else "Produit Web"
+            # 1. Extraction du Titre
+            title = soup.title.string.strip()[:40] if soup.title else "Produit trouvé"
 
-            # Recherche de prix universelle
+            # 2. ALGORITHME DE PRIX AVANCÉ (Scanner de texte)
             price = "Non détecté"
             
-            # On cherche dans les zones de texte qui ont un symbole monétaire
-            for p in soup.find_all(string=re.compile(r'[0-9](?:[.,][0-9]{2})?[\s]?[€$]')):
-                parent_text = p.strip()
-                if 0 < len(parent_text) < 15:
-                    price = parent_text
+            # On cherche partout où il y a un chiffre suivi de $, € ou USD
+            potential_prices = soup.find_all(string=re.compile(r'[0-9](?:[.,][0-9]{2})?[\s]?[€$]|USD'))
+            
+            for p in potential_prices:
+                clean_p = p.strip()
+                # On vérifie que c'est bien un prix (court) et pas un long paragraphe
+                if 2 < len(clean_p) < 15:
+                    price = clean_p
                     break
             
-            results.append({"nom": title, "prix": price, "site": site_name, "url": url})
+            results.append({"nom": title, "prix": price, "site": site_name})
         except:
-            results.append({"nom": "Lien restreint", "prix": "-", "site": site_name, "url": url})
+            results.append({"nom": "Lien protégé", "prix": "Bloqué", "site": site_name})
             
     latest_results = results
     return Template(HTML_TEMPLATE).render(request=request, results=results)
 
 @app.get("/download/{file_type}")
 async def download(file_type: str):
-    if not latest_results: return {"error": "Aucune donnée"}
+    if not latest_results: return {"error": "No data"}
     df = pd.DataFrame(latest_results)
-    
     if file_type == "excel":
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False)
         output.seek(0)
-        return StreamingResponse(output, 
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
-            headers={"Content-Disposition": "attachment; filename=PolyScraper_Data.xlsx"})
+        return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": "attachment; filename=PolyScraper_Data.xlsx"})
     else:
         csv_data = df.to_csv(index=False)
-        return StreamingResponse(io.StringIO(csv_data), 
-            media_type="text/csv", 
-            headers={"Content-Disposition": "attachment; filename=PolyScraper_Data.csv"})
+        return StreamingResponse(io.StringIO(csv_data), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=PolyScraper_Data.csv"})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
